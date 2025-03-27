@@ -1,7 +1,7 @@
 # Importação das Bibliotecas necessárias
 import os
-from dotenv import load_dotenv, find_dotenv
-from langchain_groq import ChatGroq
+from dotenv import load_dotenv, find_dotenv # Biblioteca para carregar variáveis de ambiente
+from langchain_groq import ChatGroq # Integração do LangChain com Groq
 from langchain_community.chat_message_histories import ChatMessageHistory #Permite criar histórico de MSG
 from langchain_core.chat_history import BaseChatMessageHistory #Cria uma classe base para histórioc de MSG
 from langchain_core.runnables.history import RunnableWithMessageHistory #Permite Gerenciar o histórico de MSG
@@ -11,7 +11,7 @@ from langchain_core.runnables import RunnablePassthrough #Permite criar fluxos d
 from operator import itemgetter #Permite a extração de valores de dicionários
 
 # Carregar as variáveis de ambinete do arquivo .env (para proteger as credenciais)
-load_dotenv(find_dotenv())
+load_dotenv()
 
 # Obter a chave da API do Groq que está armazenada no arquivo .env
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -51,7 +51,7 @@ response = with_message_history.invoke(
 # Criação de um prompt template para estrutura a entrada do modelo
 prompt = ChatPromptTemplate.from_messages(
     [
-        ("system", " Você é um assistente útil. Responda todas as perguntas com precisão no idioma."),
+        ("system", " Você é um assistente útil. Responda todas as perguntas  suas habilidades em {language}."),
         MessagesPlaceholder(variable_name="messages") # Permitir adicionar mensagens de forma dinâmica
     ]
 )
@@ -60,12 +60,11 @@ prompt = ChatPromptTemplate.from_messages(
 chain = prompt | model
 
 # Exemplo de interação usando o template
-response = chain.invoke({"messages": [HumanMessage(content="Oi, meu nome é Julio")]})
+chain.invoke({"messages": [HumanMessage(content="Oi, meu nome é Julio")], "language": "Inglês"})
 
 # Gerenciamento da memória do chabot
 trimmer = trim_messages(
     max_tokens = 45, # Define um limite máximo de tokens para evitar ultrapassar o consumo de memória
-
     strategy = "last", # Define a estratégia de corte para remover mensagens antigas
     token_counter = model, # usa o modelo para contar os tokens
     include_system = True, # Inclui mesnagens do sistema no histórico
@@ -81,7 +80,7 @@ messages = [
 ]
 
 # Aplicar o limitador de memória ao histórico 
-response = trimmer.invoke(messages)
+trimmer.invoke(messages)
 
 # Criando um pipeline de execução para otimizar a passagem de informações entre os componentes
 chain = (
@@ -94,6 +93,7 @@ chain = (
 response = chain.invoke(
     {
         "messages": messages + [HumanMessage(content="Qual é o sorvete que eu gosto?")],
+        "language": "Inglês"
     }
 )
 
