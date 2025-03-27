@@ -22,6 +22,7 @@ model = ChatGroq(
     groq_api_key = GROQ_API_KEY
 )
 
+# EXEMPLO 01---------------------------------------------------------------------
 # Dicionário para armazenar o histórico de mensagens
 store = {}
 
@@ -46,7 +47,55 @@ response = with_message_history.invoke(
     config=config
 )
 
-# Exibir a resposta do modelo
-print("Resposta do modelo:", response.content)
+# EXEMPLO 02-------------------------------------------------------------------------------------------
+# Criação de um prompt template para estrutura a entrada do modelo
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", " Você é um assistente útil. Responda todas as perguntas com precisão no idioma."),
+        MessagesPlaceholder(variable_name="messages") # Permitir adicionar mensagens de forma dinâmica
+    ]
+)
 
-        
+# Conecta o modelo ao template de prompt
+chain = prompt | model
+
+# Exemplo de interação usando o template
+response = chain.invoke({"messages": [HumanMessage(content="Oi, meu nome é Julio")]})
+
+# Gerenciamento da memória do chabot
+trimmer = trim_messages(
+    max_tokens = 45, # Define um limite máximo de tokens para evitar ultrapassar o consumo de memória
+
+    strategy = "last", # Define a estratégia de corte para remover mensagens antigas
+    token_counter = model, # usa o modelo para contar os tokens
+    include_system = True, # Inclui mesnagens do sistema no histórico
+    allow_partial = False, # Evita que as menssagens sejam cortadas parcialmente
+    start_on = "human" # Começa a contagem dos tokens com a mensagem humana
+)
+# Exemplo de histórico de mensagens
+messages = [
+    SystemMessage(content="Você é um assistente."),
+    HumanMessage(content="Oi, o meu nome é John Wick."),
+    AIMessage(content="Oi John, como posso te ajudar hoje?"),
+    HumanMessage(content="Eu gosto de sorvete de Pistache.")
+]
+
+# Aplicar o limitador de memória ao histórico 
+response = trimmer.invoke(messages)
+
+# Criando um pipeline de execução para otimizar a passagem de informações entre os componentes
+chain = (
+    RunnablePassthrough.assign(messages=itemgetter("messages") | trimmer) # Aplica otimização do histórico
+    | prompt # Passa a entrada pelo template do prompt
+    | model # Passa as entradas pelo modelo
+)
+
+# Exemplo de interação utilizando o pipeline otimizado
+response = chain.invoke(
+    {
+        "messages": messages + [HumanMessage(content="Qual é o sorvete que eu gosto?")],
+    }
+)
+
+# Exibir a resposta final do modelo
+print("Resposta final do modelo", response.content)
